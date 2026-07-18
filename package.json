@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "build": "vite build && cp dist/client/_shell.html dist/client/index.html",
-    "start": "sirv dist/client --single --host 0.0.0.0 --port ${PORT:-3000}",
+    "start": "node server.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "lint": "eslint",
@@ -19,6 +19,7 @@
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
     "@sentry/react": "^10.66.0",
+    "@sentry/tanstackstart-react": "^10.66.0",
     "@tailwindcss/vite": "^4",
     "@tanstack/react-devtools": "latest",
     "@tanstack/react-query": "^5.101.2",
@@ -37,7 +38,7 @@
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "shadcn": "^4.13.1",
-    "sirv-cli": "^3.0.1",
+    "sirv": "^3.0.2",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4",
