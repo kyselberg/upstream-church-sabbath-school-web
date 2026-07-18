@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAssignments, useClasses, useMembers } from "@/lib/hooks"
-import type { Assignment } from "@/lib/types"
+import type { Assignment, Class, Member } from "@/lib/types"
 
 export const Route = createFileRoute("/_authed/")({ component: DashboardPage })
 
@@ -27,29 +27,24 @@ function DashboardPage() {
   const membersQuery = useMembers(true)
   const classesQuery = useClasses()
 
-  const isLoading =
-    assignmentsQuery.isLoading ||
-    membersQuery.isLoading ||
-    classesQuery.isLoading
-  const error =
-    assignmentsQuery.error ?? membersQuery.error ?? classesQuery.error
-
   return (
     <>
       <PageHeader title="Панель" />
-      {isLoading ? (
+      {assignmentsQuery.isLoading ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Skeleton className="h-48 w-full" />
           <Skeleton className="h-48 w-full" />
           <Skeleton className="h-48 w-full" />
         </div>
-      ) : error ? (
-        <p className="text-sm text-destructive">Помилка: {error.message}</p>
+      ) : assignmentsQuery.error ? (
+        <p className="text-sm text-destructive">
+          Помилка: {assignmentsQuery.error.message}
+        </p>
       ) : (
         <DashboardContent
           assignments={assignmentsQuery.data ?? []}
-          members={membersQuery.data ?? []}
-          classes={classesQuery.data ?? []}
+          members={membersQuery.error ? undefined : membersQuery.data}
+          classes={classesQuery.error ? undefined : classesQuery.data}
         />
       )}
     </>
@@ -62,8 +57,8 @@ function DashboardContent({
   classes,
 }: {
   assignments: Assignment[]
-  members: NonNullable<ReturnType<typeof useMembers>["data"]>
-  classes: NonNullable<ReturnType<typeof useClasses>["data"]>
+  members: Member[] | undefined
+  classes: Class[] | undefined
 }) {
   const nearestDate = assignments
     .map((a) => a.date)
@@ -74,58 +69,60 @@ function DashboardContent({
     .filter(isGap)
     .sort((a, b) => a.date.localeCompare(b.date))
 
-  const unlinkedMembers = members.filter((m) => m.telegramUserId === null)
+  const unlinkedMembers = members?.filter((m) => m.telegramUserId === null)
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {nearestDate
-              ? `Найближча субота: ${formatDate(nearestDate)}`
-              : "Найближча субота"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {nearestDate ? (
-            <ul className="flex flex-col gap-2">
-              {classes.map((cls) => {
-                const a = assignments.find(
-                  (x) => x.classId === cls.id && x.date === nearestDate
-                )
-                return (
-                  <li
-                    key={cls.id}
-                    className="flex items-center justify-between gap-2"
-                  >
-                    <span className="text-foreground">{cls.name}</span>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={
-                          a?.memberName
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        }
-                      >
-                        {a?.memberName ?? "не призначено"}
+      {classes && (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {nearestDate
+                ? `Найближча субота: ${formatDate(nearestDate)}`
+                : "Найближча субота"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {nearestDate ? (
+              <ul className="flex flex-col gap-2">
+                {classes.map((cls) => {
+                  const a = assignments.find(
+                    (x) => x.classId === cls.id && x.date === nearestDate
+                  )
+                  return (
+                    <li
+                      key={cls.id}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <span className="text-foreground">{cls.name}</span>
+                      <span className="flex items-center gap-2">
+                        <span
+                          className={
+                            a?.memberName
+                              ? "text-foreground"
+                              : "text-muted-foreground"
+                          }
+                        >
+                          {a?.memberName ?? "не призначено"}
+                        </span>
+                        {isGap(a) && (
+                          <Badge variant="destructive">
+                            {a?.status === "needs_substitute"
+                              ? "потрібна заміна"
+                              : "вільно"}
+                          </Badge>
+                        )}
                       </span>
-                      {isGap(a) && (
-                        <Badge variant="destructive">
-                          {a?.status === "needs_substitute"
-                            ? "потрібна заміна"
-                            : "вільно"}
-                        </Badge>
-                      )}
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">Немає даних</p>
-          )}
-        </CardContent>
-      </Card>
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">Немає даних</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -154,31 +151,33 @@ function DashboardContent({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Не привязані до Telegram ({unlinkedMembers.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {unlinkedMembers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Усі привязані</p>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {unlinkedMembers.map((m) => (
-                <li key={m.id}>
-                  <Link
-                    to="/members"
-                    className="text-foreground hover:underline"
-                  >
-                    {m.fullName}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      {unlinkedMembers && (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              Не привязані до Telegram ({unlinkedMembers.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {unlinkedMembers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Усі привязані</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {unlinkedMembers.map((m) => (
+                  <li key={m.id}>
+                    <Link
+                      to="/members"
+                      className="text-foreground hover:underline"
+                    >
+                      {m.fullName}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

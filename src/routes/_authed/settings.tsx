@@ -58,8 +58,8 @@ function SettingsPage() {
   const [form, setForm] = useState<FormState | null>(null)
 
   useEffect(() => {
-    if (query.data) setForm(toForm(query.data))
-  }, [query.data])
+    if (query.data && !form) setForm(toForm(query.data))
+  }, [query.data, form])
 
   if (permsLoading) {
     return (
@@ -121,12 +121,12 @@ function SettingsPage() {
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="flex flex-col gap-1.5">
-                    <Label>День тижня</Label>
+                    <Label htmlFor="reminderWeekday">День тижня</Label>
                     <Select
                       value={form.reminderWeekday.toString()}
                       onValueChange={(v) => set("reminderWeekday", Number(v))}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger id="reminderWeekday" className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -141,25 +141,37 @@ function SettingsPage() {
                   <div className="flex flex-col gap-1.5">
                     <Label>Час</Label>
                     <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={23}
-                        value={form.reminderHour}
-                        onChange={(e) =>
-                          set("reminderHour", Number(e.target.value))
-                        }
-                      />
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="reminderHour" className="sr-only">
+                          Година
+                        </Label>
+                        <Input
+                          id="reminderHour"
+                          type="number"
+                          min={0}
+                          max={23}
+                          value={form.reminderHour}
+                          onChange={(e) =>
+                            set("reminderHour", Number(e.target.value))
+                          }
+                        />
+                      </div>
                       <span className="text-muted-foreground">:</span>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={59}
-                        value={form.reminderMinute}
-                        onChange={(e) =>
-                          set("reminderMinute", Number(e.target.value))
-                        }
-                      />
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="reminderMinute" className="sr-only">
+                          Хвилина
+                        </Label>
+                        <Input
+                          id="reminderMinute"
+                          type="number"
+                          min={0}
+                          max={59}
+                          value={form.reminderMinute}
+                          onChange={(e) =>
+                            set("reminderMinute", Number(e.target.value))
+                          }
+                        />
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -173,8 +185,11 @@ function SettingsPage() {
                     </Label>
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <Label>Вікно скасування (хв)</Label>
+                    <Label htmlFor="undoWindowMinutes">
+                      Вікно скасування (хв)
+                    </Label>
                     <Input
+                      id="undoWindowMinutes"
                       type="number"
                       min={0}
                       value={form.undoWindowMinutes}
@@ -192,8 +207,11 @@ function SettingsPage() {
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="flex flex-col gap-1.5">
-                    <Label>ID групового чату</Label>
+                    <Label htmlFor="telegramGroupChatId">
+                      ID групового чату
+                    </Label>
                     <Input
+                      id="telegramGroupChatId"
                       type="number"
                       value={form.telegramGroupChatId}
                       onChange={(e) =>
@@ -210,22 +228,25 @@ function SettingsPage() {
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="flex flex-col gap-1.5">
-                    <Label>Часовий пояс</Label>
+                    <Label htmlFor="timezone">Часовий пояс</Label>
                     <Input
+                      id="timezone"
                       value={form.timezone}
                       onChange={(e) => set("timezone", e.target.value)}
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <Label>Мова бота</Label>
+                    <Label htmlFor="botLocale">Мова бота</Label>
                     <Input
+                      id="botLocale"
                       value={form.botLocale}
                       onChange={(e) => set("botLocale", e.target.value)}
                     />
                   </div>
                   <div className="flex flex-col gap-1.5 sm:col-span-2">
-                    <Label>Модель LLM</Label>
+                    <Label htmlFor="llmModel">Модель LLM</Label>
                     <Input
+                      id="llmModel"
                       value={form.llmModel}
                       onChange={(e) => set("llmModel", e.target.value)}
                     />

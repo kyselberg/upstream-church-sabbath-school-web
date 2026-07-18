@@ -232,11 +232,16 @@ function AssignmentCell({
   function confirm() {
     if (!pickedId) return
     if (dialogKind === "reassign") {
-      reassign.mutate({ id: assignment.id, toMemberId: pickedId })
+      reassign.mutate(
+        { id: assignment.id, toMemberId: pickedId },
+        { onSuccess: () => setDialogKind(null) }
+      )
     } else {
-      substitute.mutate({ id: assignment.id, substituteMemberId: pickedId })
+      substitute.mutate(
+        { id: assignment.id, substituteMemberId: pickedId },
+        { onSuccess: () => setDialogKind(null) }
+      )
     }
-    setDialogKind(null)
   }
 
   return (
@@ -263,7 +268,12 @@ function AssignmentCell({
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-sm" className="ml-auto shrink-0">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="ml-auto shrink-0"
+            aria-label="Дії"
+          >
             <MoreHorizontal />
           </Button>
         </DropdownMenuTrigger>

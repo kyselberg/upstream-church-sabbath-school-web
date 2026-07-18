@@ -148,6 +148,7 @@ function ClassesPage() {
         onSubmit={(input) =>
           createClass.mutate(input, { onSuccess: () => setCreateOpen(false) })
         }
+        isPending={createClass.isPending}
       />
 
       <ClassFormDialog
@@ -179,16 +180,27 @@ function ClassFormDialog({
   onOpenChange,
   classItem,
   onSubmit,
+  isPending,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   classItem?: Class | null
   onSubmit: (input: CreateClassInput & { isActive?: boolean }) => void
+  isPending?: boolean
 }) {
   const [name, setName] = useState(classItem?.name ?? "")
   const [description, setDescription] = useState(classItem?.description ?? "")
   const [sortOrder, setSortOrder] = useState(String(classItem?.sortOrder ?? 0))
   const [isActive, setIsActive] = useState(classItem?.isActive ?? true)
+
+  useEffect(() => {
+    if (!open && !classItem) {
+      setName("")
+      setDescription("")
+      setSortOrder("0")
+      setIsActive(true)
+    }
+  }, [open, classItem])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -237,7 +249,7 @@ function ClassFormDialog({
         </div>
         <DialogFooter>
           <Button
-            disabled={!name.trim()}
+            disabled={!name.trim() || !!isPending}
             onClick={() =>
               onSubmit({
                 name: name.trim(),
@@ -306,6 +318,7 @@ function TeachersDialog({
                       <Button
                         variant="ghost"
                         size="icon-sm"
+                        aria-label="Прибрати з класу"
                         onClick={() =>
                           removeTeacher.mutate({
                             classId: classItem.id,

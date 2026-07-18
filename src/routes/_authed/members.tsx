@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { Pencil, Trash2, KeyRound, Copy, Plus } from "lucide-react"
+import { toast } from "sonner"
 import { PageHeader } from "@/components/page-header"
 import { DataState } from "@/components/data-state"
 import { ConfirmDialog } from "@/components/confirm-dialog"
@@ -103,19 +104,32 @@ function MembersPage() {
   }
 
   function submitForm() {
-    const input = {
-      fullName: form.fullName,
-      displayName: form.displayName || undefined,
-      phone: form.phone || undefined,
-      telegramUsername: form.telegramUsername || undefined,
-    }
     if (editing) {
       updateMember.mutate(
-        { id: editing.id, ...input, isActive: form.isActive },
+        {
+          id: editing.id,
+          fullName: form.fullName,
+          displayName:
+            form.displayName.trim() === "" ? null : form.displayName.trim(),
+          phone: form.phone.trim() === "" ? null : form.phone.trim(),
+          telegramUsername:
+            form.telegramUsername.trim() === ""
+              ? null
+              : form.telegramUsername.trim(),
+          isActive: form.isActive,
+        },
         { onSuccess: () => setFormOpen(false) }
       )
     } else {
-      createMember.mutate(input, { onSuccess: () => setFormOpen(false) })
+      createMember.mutate(
+        {
+          fullName: form.fullName,
+          displayName: form.displayName || undefined,
+          phone: form.phone || undefined,
+          telegramUsername: form.telegramUsername || undefined,
+        },
+        { onSuccess: () => setFormOpen(false) }
+      )
     }
   }
 
@@ -177,12 +191,12 @@ function MembersPage() {
                   <TableCell>{member.displayName ?? "—"}</TableCell>
                   <TableCell>{member.phone ?? "—"}</TableCell>
                   <TableCell>
-                    {member.telegramUsername ? (
+                    {member.telegramUserId != null ? (
                       <Badge variant="secondary">
-                        @{member.telegramUsername}
+                        {member.telegramUsername
+                          ? `@${member.telegramUsername}`
+                          : "привязано"}
                       </Badge>
-                    ) : member.telegramLinkedAt ? (
-                      <Badge variant="secondary">привязано</Badge>
                     ) : (
                       <span className="text-muted-foreground">
                         не привязано
@@ -198,7 +212,11 @@ function MembersPage() {
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon-sm">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Дії для ${member.fullName}`}
+                          >
                             <Pencil className="opacity-50" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -326,7 +344,15 @@ function MembersPage() {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => navigator.clipboard.writeText(token.deepLink)}
+                  aria-label="Копіювати посилання"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(token.deepLink)
+                      toast.success("Скопійовано")
+                    } catch {
+                      toast.error("Не вдалося скопіювати")
+                    }
+                  }}
                 >
                   <Copy />
                 </Button>

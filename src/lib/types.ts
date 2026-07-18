@@ -130,7 +130,11 @@ export interface CreateMemberInput {
   telegramUsername?: string
 }
 
-export type UpdateMemberInput = Partial<CreateMemberInput> & {
+export type UpdateMemberInput = {
+  fullName?: string
+  displayName?: string | null
+  phone?: string | null
+  telegramUsername?: string | null
   isActive?: boolean
 }
 
