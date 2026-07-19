@@ -187,7 +187,22 @@ function SchedulePage() {
     return (
       <>
         <PageHeader title="Розклад" />
-        <p className="text-sm text-muted-foreground">Немає кварталів</p>
+        <Card className="items-start gap-3 p-4">
+          <p className="font-medium">Немає кварталів</p>
+          <p className="text-muted-foreground">
+            Створи перший квартал, щоб почати планувати суботи.
+          </p>
+          {has("schedule.assign") && (
+            <Button onClick={() => setNewQuarterOpen(true)}>
+              Новий квартал
+            </Button>
+          )}
+        </Card>
+        <NewQuarterDialog
+          quarters={quarters}
+          open={newQuarterOpen}
+          onOpenChange={setNewQuarterOpen}
+        />
       </>
     )
   }

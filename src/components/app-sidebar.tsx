@@ -7,6 +7,7 @@ import {
   Shield,
   ScrollText,
   Settings,
+  Bot,
   LogOut,
 } from "lucide-react"
 import {
@@ -51,6 +52,7 @@ const NAV_ITEMS = [
     perm: "settings.manage",
     icon: Settings,
   },
+  { label: "LLM", path: "/llm", perm: "settings.manage", icon: Bot },
 ] as const
 
 export function AppSidebar() {

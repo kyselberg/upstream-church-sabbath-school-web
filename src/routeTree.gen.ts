@@ -17,6 +17,7 @@ import { Route as AuthedScheduleRouteImport } from './routes/_authed/schedule'
 import { Route as AuthedRolesRouteImport } from './routes/_authed/roles'
 import { Route as AuthedMyRouteImport } from './routes/_authed/my'
 import { Route as AuthedMembersRouteImport } from './routes/_authed/members'
+import { Route as AuthedLlmRouteImport } from './routes/_authed/llm'
 import { Route as AuthedClassesRouteImport } from './routes/_authed/classes'
 import { Route as AuthedActivityRouteImport } from './routes/_authed/activity'
 
@@ -59,6 +60,11 @@ const AuthedMembersRoute = AuthedMembersRouteImport.update({
   path: '/members',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedLlmRoute = AuthedLlmRouteImport.update({
+  id: '/llm',
+  path: '/llm',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedClassesRoute = AuthedClassesRouteImport.update({
   id: '/classes',
   path: '/classes',
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/activity': typeof AuthedActivityRoute
   '/classes': typeof AuthedClassesRoute
+  '/llm': typeof AuthedLlmRoute
   '/members': typeof AuthedMembersRoute
   '/my': typeof AuthedMyRoute
   '/roles': typeof AuthedRolesRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/activity': typeof AuthedActivityRoute
   '/classes': typeof AuthedClassesRoute
+  '/llm': typeof AuthedLlmRoute
   '/members': typeof AuthedMembersRoute
   '/my': typeof AuthedMyRoute
   '/roles': typeof AuthedRolesRoute
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authed/activity': typeof AuthedActivityRoute
   '/_authed/classes': typeof AuthedClassesRoute
+  '/_authed/llm': typeof AuthedLlmRoute
   '/_authed/members': typeof AuthedMembersRoute
   '/_authed/my': typeof AuthedMyRoute
   '/_authed/roles': typeof AuthedRolesRoute
@@ -112,6 +121,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/activity'
     | '/classes'
+    | '/llm'
     | '/members'
     | '/my'
     | '/roles'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/activity'
     | '/classes'
+    | '/llm'
     | '/members'
     | '/my'
     | '/roles'
@@ -134,6 +145,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authed/activity'
     | '/_authed/classes'
+    | '/_authed/llm'
     | '/_authed/members'
     | '/_authed/my'
     | '/_authed/roles'
@@ -205,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedMembersRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/llm': {
+      id: '/_authed/llm'
+      path: '/llm'
+      fullPath: '/llm'
+      preLoaderRoute: typeof AuthedLlmRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/classes': {
       id: '/_authed/classes'
       path: '/classes'
@@ -225,6 +244,7 @@ declare module '@tanstack/react-router' {
 interface AuthedRouteChildren {
   AuthedActivityRoute: typeof AuthedActivityRoute
   AuthedClassesRoute: typeof AuthedClassesRoute
+  AuthedLlmRoute: typeof AuthedLlmRoute
   AuthedMembersRoute: typeof AuthedMembersRoute
   AuthedMyRoute: typeof AuthedMyRoute
   AuthedRolesRoute: typeof AuthedRolesRoute
@@ -236,6 +256,7 @@ interface AuthedRouteChildren {
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedActivityRoute: AuthedActivityRoute,
   AuthedClassesRoute: AuthedClassesRoute,
+  AuthedLlmRoute: AuthedLlmRoute,
   AuthedMembersRoute: AuthedMembersRoute,
   AuthedMyRoute: AuthedMyRoute,
   AuthedRolesRoute: AuthedRolesRoute,

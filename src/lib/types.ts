@@ -62,7 +62,10 @@ export interface Settings {
   reminderMinute: number
   pinWeekly: boolean
   undoWindowMinutes: number
+  llmProvider: string
   llmModel: string
+  llmBaseUrl: string | null
+  llmApiKeySet: boolean
   botLocale: string
   updatedAt: string
 }
@@ -158,7 +161,9 @@ export interface CreateQuarterInput {
 
 export type UpdateQuarterInput = Partial<CreateQuarterInput>
 
-export type UpdateSettingsInput = Partial<Omit<Settings, "id" | "updatedAt">>
+export type UpdateSettingsInput = Partial<
+  Omit<Settings, "id" | "updatedAt" | "llmApiKeySet">
+> & { llmApiKey?: string }
 
 export interface FillOption {
   memberId: string

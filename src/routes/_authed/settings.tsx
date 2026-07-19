@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { PageHeader } from "@/components/page-header"
 import { DataState } from "@/components/data-state"
 import { TelegramBubble } from "@/components/telegram-bubble"
@@ -53,8 +53,6 @@ const BOT_LOCALES = [
   { value: "en", label: "English" },
 ]
 
-const LLM_MODELS = ["anthropic:claude-sonnet-4-6", "anthropic:claude-opus-4-6"]
-
 const TIMEZONES = ["Europe/Kyiv", "Europe/Warsaw", "Europe/London", "UTC"]
 
 function withCurrent(list: string[], current: string) {
@@ -91,7 +89,6 @@ type FormState = {
   reminderMinute: number
   pinWeekly: boolean
   undoWindowMinutes: number
-  llmModel: string
   botLocale: string
 }
 
@@ -104,7 +101,6 @@ function toForm(s: Settings): FormState {
     reminderMinute: s.reminderMinute,
     pinWeekly: s.pinWeekly,
     undoWindowMinutes: s.undoWindowMinutes,
-    llmModel: s.llmModel,
     botLocale: s.botLocale,
   }
 }
@@ -189,7 +185,6 @@ function SettingsPage() {
       reminderMinute: form.reminderMinute,
       pinWeekly: form.pinWeekly,
       undoWindowMinutes: form.undoWindowMinutes,
-      llmModel: form.llmModel,
       botLocale: form.botLocale,
     }
     upd.mutate(input)
@@ -251,22 +246,13 @@ function SettingsPage() {
                     </Select>
                   </div>
                   <div className="grid grid-cols-[180px_1fr] items-center gap-3">
-                    <Label htmlFor="llmModel">LLM-модель</Label>
-                    <Select
-                      value={form.llmModel}
-                      onValueChange={(v) => set("llmModel", v)}
+                    <Label>LLM</Label>
+                    <Link
+                      to="/llm"
+                      className="text-sm text-muted-foreground underline underline-offset-2"
                     >
-                      <SelectTrigger id="llmModel" className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {withCurrent(LLM_MODELS, form.llmModel).map((m) => (
-                          <SelectItem key={m} value={m}>
-                            {m}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      Налаштування LLM — окрема сторінка →
+                    </Link>
                   </div>
                 </CardContent>
               </Card>
