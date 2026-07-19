@@ -97,6 +97,21 @@ export function useCreateTelegramToken() {
   })
 }
 
+export function useUnlinkTelegram() {
+  const qc = useQueryClient()
+  return useMutation<Member, ApiError, string>({
+    mutationFn: (id) =>
+      apiFetch<Member>(`/members/${id}/telegram-unlink`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["members"] })
+      toast.success("Telegram відв'язано")
+    },
+    onError,
+  })
+}
+
 export function useClasses() {
   return useQuery<Class[], ApiError>({
     queryKey: ["classes"],

@@ -4,6 +4,7 @@ import {
   Pencil,
   Trash2,
   KeyRound,
+  Unlink,
   MoreHorizontal,
   Archive,
   ArchiveRestore,
@@ -20,6 +21,7 @@ import {
   useCreateMember,
   useUpdateMember,
   useDeleteMember,
+  useUnlinkTelegram,
   useQuarters,
   useAssignments,
 } from "@/lib/hooks"
@@ -97,6 +99,7 @@ function MembersPage() {
   const createMember = useCreateMember()
   const updateMember = useUpdateMember()
   const deleteMember = useDeleteMember()
+  const unlinkTelegram = useUnlinkTelegram()
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Member | null>(null)
@@ -265,6 +268,23 @@ function MembersPage() {
                               >
                                 <KeyRound /> Токен Telegram
                               </DropdownMenuItem>
+                            )}
+                            {canLinkTelegram && member.telegramLinkedAt && (
+                              <ConfirmDialog
+                                trigger={
+                                  <DropdownMenuItem
+                                    onSelect={(e) => e.preventDefault()}
+                                  >
+                                    <Unlink /> Відв'язати Telegram
+                                  </DropdownMenuItem>
+                                }
+                                title="Відв'язати Telegram?"
+                                description="Вчитель втратить доступ через Telegram — для повторного підключення знадобиться новий токен."
+                                confirmLabel="Відв'язати"
+                                onConfirm={() =>
+                                  unlinkTelegram.mutate(member.id)
+                                }
+                              />
                             )}
                             {canManage && (
                               <DropdownMenuItem

@@ -40,7 +40,7 @@ function initials(name: string) {
     .join("")
 }
 
-type View = "checking" | "ok" | "expired" | "form"
+type View = "checking" | "ok" | "expired" | "failed" | "form"
 
 function LoginPage() {
   const { token } = Route.useSearch()
@@ -64,14 +64,19 @@ function LoginPage() {
         return
       }
 
-      await qc.invalidateQueries({ queryKey: ["me"] })
-      const freshMe = await qc.fetchQuery({
-        queryKey: ["me"],
-        queryFn: () => apiFetch<Me>("/me"),
-      })
-      if (cancelled) return
-      setMe(freshMe)
-      setView("ok")
+      try {
+        await qc.invalidateQueries({ queryKey: ["me"] })
+        const freshMe = await qc.fetchQuery({
+          queryKey: ["me"],
+          queryFn: () => apiFetch<Me>("/me"),
+        })
+        if (cancelled) return
+        setMe(freshMe)
+        setView("ok")
+      } catch {
+        if (cancelled) return
+        setView("failed")
+      }
     }
 
     verify(token)
@@ -95,6 +100,7 @@ function LoginPage() {
             <OkView me={me} onCancel={showPasswordForm} />
           )}
           {view === "expired" && <ExpiredView onPassword={showPasswordForm} />}
+          {view === "failed" && <FailedView onPassword={showPasswordForm} />}
           {view === "form" && <PasswordForm />}
         </CardContent>
       </Card>
@@ -179,6 +185,38 @@ function ExpiredView({ onPassword }: { onPassword: () => void }) {
       </p>
       <div className="flex w-full flex-col gap-2">
         {/* ponytail: no backend path exists to resend a consumed/expired token (better-auth invalidates it) — this is instructional-only, points back to the bot instead of a resend mutation */}
+        <Button asChild className="w-full">
+          <a
+            href="https://t.me/SabbathSchoolUpChurchBot"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Відкрити бота
+          </a>
+        </Button>
+        <Button variant="ghost" className="w-full" onClick={onPassword}>
+          Увійти паролем
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function FailedView({ onPassword }: { onPassword: () => void }) {
+  return (
+    <div className="flex w-full flex-col items-center gap-4 text-center">
+      <div className="grid size-10 place-items-center rounded-full bg-destructive/10 text-destructive">
+        <X className="size-5" />
+      </div>
+      <p className="font-heading text-sm font-medium">
+        Не вдалося завершити вхід
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Схоже, цей браузер (напр. всередині Telegram) не зберіг сесію. Напиши
+        боту /login ще раз і відкрий посилання у звичайному браузері
+        (Safari/Chrome).
+      </p>
+      <div className="flex w-full flex-col gap-2">
         <Button asChild className="w-full">
           <a
             href="https://t.me/SabbathSchoolUpChurchBot"
