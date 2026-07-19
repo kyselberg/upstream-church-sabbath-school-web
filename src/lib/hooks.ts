@@ -20,6 +20,7 @@ import type {
   Permission,
   ActivityItem,
   Me,
+  FillSuggestions,
 } from "@/lib/types"
 
 function onError(err: ApiError) {
@@ -35,13 +36,14 @@ export function useMe() {
   })
 }
 
-export function useMembers(activeOnly?: boolean) {
+export function useMembers(activeOnly?: boolean, refetchInterval?: number) {
   return useQuery<Member[], ApiError>({
     queryKey: ["members", { activeOnly }],
     queryFn: () =>
       apiFetch<Member[]>("/members", {
         params: activeOnly ? { active: true } : undefined,
       }),
+    refetchInterval,
   })
 }
 
@@ -170,14 +172,40 @@ export function useAddTeacher() {
 
 export function useRemoveTeacher() {
   const qc = useQueryClient()
-  return useMutation<unknown, ApiError, { classId: string; memberId: string }>({
-    mutationFn: ({ classId, memberId }) =>
+  return useMutation<
+    unknown,
+    ApiError,
+    { classId: string; memberId: string; releaseFutureSlots?: boolean }
+  >({
+    mutationFn: ({ classId, memberId, releaseFutureSlots }) =>
       apiFetch(`/classes/${classId}/teachers/${memberId}`, {
         method: "DELETE",
+        params: releaseFutureSlots ? { releaseFutureSlots: true } : undefined,
       }),
     onSuccess: (_data, { classId }) => {
       qc.invalidateQueries({ queryKey: ["class-teachers", classId] })
+      qc.invalidateQueries({ queryKey: ["assignments"] })
       toast.success("Вчителя видалено з класу")
+    },
+    onError,
+  })
+}
+
+export function useSetPrimaryTeacher() {
+  const qc = useQueryClient()
+  return useMutation<
+    TeacherPoolEntry,
+    ApiError,
+    { classId: string; memberId: string; isPrimary: boolean }
+  >({
+    mutationFn: ({ classId, memberId, isPrimary }) =>
+      apiFetch<TeacherPoolEntry>(`/classes/${classId}/teachers/${memberId}`, {
+        method: "PATCH",
+        body: { isPrimary },
+      }),
+    onSuccess: (_data, { classId }) => {
+      qc.invalidateQueries({ queryKey: ["class-teachers", classId] })
+      toast.success("Оновлено")
     },
     onError,
   })
@@ -234,13 +262,14 @@ export function useGenerateSaturdays() {
   return useMutation<
     { saturdays: string[]; created: number },
     ApiError,
-    string
+    { id: string; autoFill?: boolean }
   >({
-    mutationFn: (id) =>
+    mutationFn: ({ id, autoFill }) =>
       apiFetch<{ saturdays: string[]; created: number }>(
         `/quarters/${id}/generate-saturdays`,
         {
           method: "POST",
+          body: { autoFill },
         }
       ),
     onSuccess: () => {
@@ -248,6 +277,16 @@ export function useGenerateSaturdays() {
       toast.success("Суботи згенеровано")
     },
     onError,
+  })
+}
+
+export function useFillSuggestions(quarterId?: string, enabled = false) {
+  return useQuery<FillSuggestions, ApiError>({
+    queryKey: ["fill-suggestions", quarterId],
+    queryFn: () =>
+      apiFetch<FillSuggestions>(`/quarters/${quarterId}/fill-suggestions`),
+    enabled: enabled && !!quarterId,
+    staleTime: 0,
   })
 }
 
@@ -267,16 +306,19 @@ export function useAssignments(params: {
 
 export function useReassign() {
   const qc = useQueryClient()
-  return useMutation<Assignment, ApiError, { id: string; toMemberId: string }>({
+  return useMutation<
+    { changeId: string },
+    ApiError,
+    { id: string; toMemberId: string }
+  >({
     mutationFn: ({ id, toMemberId }) =>
-      apiFetch<Assignment>(`/assignments/${id}`, {
+      apiFetch<{ changeId: string }>(`/assignments/${id}`, {
         method: "PATCH",
         body: { toMemberId },
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["assignments"] })
       qc.invalidateQueries({ queryKey: ["activity"] })
-      toast.success("Призначення оновлено")
     },
     onError,
   })
@@ -285,19 +327,18 @@ export function useReassign() {
 export function useSubstitute() {
   const qc = useQueryClient()
   return useMutation<
-    Assignment,
+    { changeId: string },
     ApiError,
     { id: string; substituteMemberId: string }
   >({
     mutationFn: ({ id, substituteMemberId }) =>
-      apiFetch<Assignment>(`/assignments/${id}/substitute`, {
+      apiFetch<{ changeId: string }>(`/assignments/${id}/substitute`, {
         method: "POST",
         body: { substituteMemberId },
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["assignments"] })
       qc.invalidateQueries({ queryKey: ["activity"] })
-      toast.success("Заміну призначено")
     },
     onError,
   })
@@ -305,15 +346,81 @@ export function useSubstitute() {
 
 export function useMarkUnavailable() {
   const qc = useQueryClient()
-  return useMutation<Assignment, ApiError, { id: string }>({
+  return useMutation<{ changeId: string }, ApiError, { id: string }>({
     mutationFn: ({ id }) =>
-      apiFetch<Assignment>(`/assignments/${id}/mark-unavailable`, {
+      apiFetch<{ changeId: string }>(`/assignments/${id}/mark-unavailable`, {
         method: "POST",
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["assignments"] })
       qc.invalidateQueries({ queryKey: ["activity"] })
-      toast.success("Позначено недоступність")
+    },
+    onError,
+  })
+}
+
+export function useRevert() {
+  const qc = useQueryClient()
+  return useMutation<{ changeId: string }, ApiError, { id: string }>({
+    mutationFn: ({ id }) =>
+      apiFetch<{ changeId: string }>(`/assignments/${id}/revert`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["assignments"] })
+      qc.invalidateQueries({ queryKey: ["activity"] })
+      toast.success("Слот повернено")
+    },
+    onError,
+  })
+}
+
+export function useClaim() {
+  const qc = useQueryClient()
+  return useMutation<{ changeId: string }, ApiError, { id: string }>({
+    mutationFn: ({ id }) =>
+      apiFetch<{ changeId: string }>(`/assignments/${id}/claim`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["assignments"] })
+      qc.invalidateQueries({ queryKey: ["activity"] })
+      toast.success("Ти береш цю суботу")
+    },
+    onError,
+  })
+}
+
+export function useCancelSlot() {
+  const qc = useQueryClient()
+  return useMutation<{ changeId: string }, ApiError, { id: string }>({
+    mutationFn: ({ id }) =>
+      apiFetch<{ changeId: string }>(`/assignments/${id}/cancel`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["assignments"] })
+      qc.invalidateQueries({ queryKey: ["activity"] })
+    },
+    onError,
+  })
+}
+
+export function useBulkAssign() {
+  const qc = useQueryClient()
+  return useMutation<
+    { swapGroupId: string; count: number },
+    ApiError,
+    { items: { assignmentId: string; memberId: string }[] }
+  >({
+    mutationFn: (input) =>
+      apiFetch<{ swapGroupId: string; count: number }>(
+        "/assignments/bulk-assign",
+        { method: "POST", body: input }
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["assignments"] })
+      qc.invalidateQueries({ queryKey: ["activity"] })
     },
     onError,
   })
@@ -321,12 +428,19 @@ export function useMarkUnavailable() {
 
 export function useSwap() {
   const qc = useQueryClient()
-  return useMutation<unknown, ApiError, { aId: string; bId: string }>({
-    mutationFn: (input) => apiFetch("/swaps", { method: "POST", body: input }),
+  return useMutation<
+    { swapGroupId: string },
+    ApiError,
+    { aId: string; bId: string }
+  >({
+    mutationFn: (input) =>
+      apiFetch<{ swapGroupId: string }>("/swaps", {
+        method: "POST",
+        body: input,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["assignments"] })
       qc.invalidateQueries({ queryKey: ["activity"] })
-      toast.success("Обмін виконано")
     },
     onError,
   })
@@ -371,6 +485,37 @@ export function useAnnounce() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["activity"] })
       toast.success("Оголошення надіслано")
+    },
+    onError,
+  })
+}
+
+export function useCreateAnnouncement() {
+  const qc = useQueryClient()
+  return useMutation<{ ok: boolean; id: string }, ApiError, { text: string }>({
+    mutationFn: (input) =>
+      apiFetch<{ ok: boolean; id: string }>("/announcements", {
+        method: "POST",
+        body: input,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["activity"] })
+      toast.success("Оголошення надіслано")
+    },
+    onError,
+  })
+}
+
+export function useRetryAnnouncement() {
+  const qc = useQueryClient()
+  return useMutation<{ ok: boolean }, ApiError, string>({
+    mutationFn: (id) =>
+      apiFetch<{ ok: boolean }>(`/announcements/${id}/retry`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["activity"] })
+      toast.success("Повторено")
     },
     onError,
   })

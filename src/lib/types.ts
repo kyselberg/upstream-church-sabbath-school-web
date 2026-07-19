@@ -118,6 +118,7 @@ export interface ActivityAnnouncement {
   status: "pending" | "sent" | "failed"
   changeId: string | null
   swapGroupId: string | null
+  payload: { text?: string } | null
   createdAt: string
 }
 
@@ -158,3 +159,23 @@ export interface CreateQuarterInput {
 export type UpdateQuarterInput = Partial<CreateQuarterInput>
 
 export type UpdateSettingsInput = Partial<Omit<Settings, "id" | "updatedAt">>
+
+export interface FillOption {
+  memberId: string
+  name: string
+  inPool: boolean
+  quarterLoad: number
+}
+
+export interface FillHole {
+  assignmentId: string
+  classId: string
+  className: string
+  date: string
+  suggestedMemberId: string | null
+  options: FillOption[]
+}
+
+export interface FillSuggestions {
+  holes: FillHole[]
+}

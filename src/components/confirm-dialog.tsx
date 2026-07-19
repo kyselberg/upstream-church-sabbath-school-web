@@ -21,7 +21,7 @@ export function ConfirmDialog({
 }: {
   trigger: ReactNode
   title: string
-  description?: string
+  description?: ReactNode
   confirmLabel?: string
   onConfirm: () => void
   destructive?: boolean

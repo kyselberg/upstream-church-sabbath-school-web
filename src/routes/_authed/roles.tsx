@@ -1,19 +1,14 @@
 import { useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
-import { X } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { DataState } from "@/components/data-state"
-import { MemberCombobox } from "@/components/member-combobox"
+import { RolesDialog } from "@/components/roles-dialog"
 import { usePerms } from "@/lib/perms"
-import {
-  useRoles,
-  usePermissions,
-  useMembers,
-  useMemberRoles,
-  useGrantRole,
-  useRevokeRole,
-} from "@/lib/hooks"
+import { useMembers, useMemberRoles } from "@/lib/hooks"
+import type { Member } from "@/lib/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Table,
   TableHeader,
@@ -22,29 +17,76 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
 export const Route = createFileRoute("/_authed/roles")({
   component: RolesPage,
 })
 
+const ROLE_BADGE_VARIANT: Record<
+  string,
+  "default" | "secondary" | "outline"
+> = {
+  superadmin: "default",
+  admin: "secondary",
+  teacher: "outline",
+}
+
+// ponytail: hardcoded here since the API doesn't expose role→permissions;
+// keep in sync with api/src/db/seed.ts ROLE_PERMISSIONS
+const PERMISSION_MATRIX: {
+  group: string
+  perms: { key: string; t: boolean; a: boolean; s: boolean }[]
+}[] = [
+  {
+    group: "Розклад",
+    perms: [
+      { key: "schedule.read", t: true, a: true, s: true },
+      { key: "schedule.assign.own", t: true, a: true, s: true },
+      { key: "schedule.assign", t: false, a: true, s: true },
+      { key: "swap.propose", t: true, a: true, s: true },
+      { key: "swap.approve", t: false, a: true, s: true },
+    ],
+  },
+  {
+    group: "Вчителі",
+    perms: [
+      { key: "member.read", t: true, a: true, s: true },
+      { key: "member.manage", t: false, a: true, s: true },
+    ],
+  },
+  {
+    group: "Класи",
+    perms: [
+      { key: "class.read", t: true, a: true, s: true },
+      { key: "class.manage", t: false, a: true, s: true },
+    ],
+  },
+  {
+    group: "Telegram / оголошення",
+    perms: [
+      { key: "telegram.link.self", t: true, a: true, s: true },
+      { key: "telegram.link", t: false, a: true, s: true },
+      { key: "announcement.send", t: false, a: true, s: true },
+    ],
+  },
+  {
+    group: "Система",
+    perms: [
+      { key: "role.manage", t: false, a: false, s: true },
+      { key: "settings.manage", t: false, a: false, s: true },
+    ],
+  },
+]
+
 function RolesPage() {
   const { has, isLoading } = usePerms()
+  const [activeMember, setActiveMember] = useState<Member | null>(null)
 
   if (isLoading) return null
   if (!has("role.manage")) {
     return (
       <>
-        <PageHeader title="Ролі" />
+        <PageHeader title="Ролі та доступи" />
         <p className="text-sm text-muted-foreground">Немає доступу</p>
       </>
     )
@@ -52,197 +94,140 @@ function RolesPage() {
 
   return (
     <>
-      <PageHeader title="Ролі" />
-      <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">Ролі та дозволи</TabsTrigger>
-          <TabsTrigger value="assign">Призначення ролей</TabsTrigger>
-        </TabsList>
-        <TabsContent value="overview">
-          <OverviewTab />
-        </TabsContent>
-        <TabsContent value="assign">
-          <AssignTab />
-        </TabsContent>
-      </Tabs>
+      <PageHeader title="Ролі та доступи" />
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(320px,1.2fr) minmax(320px,1fr)",
+          gap: "1rem",
+        }}
+      >
+        <TeachersCard onEdit={setActiveMember} />
+        <MatrixCard />
+      </div>
+      <RolesDialog
+        member={activeMember}
+        open={!!activeMember}
+        onOpenChange={(open) => !open && setActiveMember(null)}
+      />
     </>
   )
 }
 
-function OverviewTab() {
-  const roles = useRoles()
-  const permissions = usePermissions()
-
-  return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Ролі</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DataState
-            query={roles}
-            empty={<p className="text-sm text-muted-foreground">Немає даних</p>}
-          >
-            {(data) => (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Назва</TableHead>
-                    <TableHead>Ключ</TableHead>
-                    <TableHead>Опис</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell>{r.name}</TableCell>
-                      <TableCell className="font-mono text-muted-foreground">
-                        {r.key}
-                      </TableCell>
-                      <TableCell>{r.description ?? "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </DataState>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Дозволи</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DataState
-            query={permissions}
-            empty={<p className="text-sm text-muted-foreground">Немає даних</p>}
-          >
-            {(data) => (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ключ</TableHead>
-                    <TableHead>Опис</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-mono text-muted-foreground">
-                        {p.key}
-                      </TableCell>
-                      <TableCell>{p.description ?? "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </DataState>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function AssignTab() {
+function TeachersCard({ onEdit }: { onEdit: (member: Member) => void }) {
   const members = useMembers(true)
-  const roles = useRoles()
-  const [memberId, setMemberId] = useState<string | null>(null)
-  const [roleToGrant, setRoleToGrant] = useState<string | undefined>(undefined)
-
-  const memberRoles = useMemberRoles(memberId ?? undefined)
-  const grantRole = useGrantRole()
-  const revokeRole = useRevokeRole()
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Призначення ролей</CardTitle>
+        <CardTitle>Ролі вчителів</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <DataState query={members}>
+      <CardContent>
+        <DataState
+          query={members}
+          empty={<p className="text-sm text-muted-foreground">Немає даних</p>}
+        >
           {(data) => (
-            <MemberCombobox
-              members={data}
-              value={memberId}
-              onChange={(id) => {
-                setMemberId(id)
-                setRoleToGrant(undefined)
-              }}
-              placeholder="Оберіть вчителя"
-            />
+            <div className="flex flex-col gap-3">
+              {data.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between gap-2"
+                >
+                  <div className="flex flex-1 flex-wrap items-center gap-2">
+                    <span className="font-medium">
+                      {m.displayName ?? m.fullName}
+                    </span>
+                    <TeacherRoleBadges memberId={m.id} />
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => onEdit(m)}>
+                    Змінити
+                  </Button>
+                </div>
+              ))}
+            </div>
           )}
         </DataState>
+      </CardContent>
+    </Card>
+  )
+}
 
-        {memberId && (
-          <>
-            <div>
-              <p className="mb-2 text-sm font-medium">Поточні ролі</p>
-              <DataState
-                query={memberRoles}
-                empty={
-                  <p className="text-sm text-muted-foreground">Немає ролей</p>
-                }
-              >
-                {(data) => (
-                  <div className="flex flex-wrap gap-2">
-                    {data.map((r) => (
-                      <Badge key={r.id} variant="secondary" className="gap-1">
-                        {r.name}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            revokeRole.mutate({ memberId, roleId: r.id })
-                          }
-                          disabled={revokeRole.isPending}
-                          aria-label={`Відкликати роль ${r.name}`}
-                        >
-                          <X className="size-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </DataState>
-            </div>
+function TeacherRoleBadges({ memberId }: { memberId: string }) {
+  const roles = useMemberRoles(memberId)
 
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <p className="mb-2 text-sm font-medium">Надати роль</p>
-                <DataState query={roles}>
-                  {(data) => (
-                    <Select value={roleToGrant} onValueChange={setRoleToGrant}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Оберіть роль" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {data.map((r) => (
-                          <SelectItem key={r.id} value={r.id}>
-                            {r.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </DataState>
-              </div>
-              <Button
-                disabled={!roleToGrant || grantRole.isPending}
-                onClick={() => {
-                  if (!roleToGrant) return
-                  grantRole.mutate(
-                    { memberId, roleId: roleToGrant },
-                    { onSuccess: () => setRoleToGrant(undefined) }
-                  )
-                }}
-              >
-                Надати
-              </Button>
-            </div>
-          </>
-        )}
+  return (
+    <DataState query={roles}>
+      {(data) =>
+        data.length === 0 ? (
+          <Badge variant="outline">teacher</Badge>
+        ) : (
+          <div className="flex flex-wrap gap-1">
+            {data.map((r) => (
+              <Badge key={r.id} variant={ROLE_BADGE_VARIANT[r.key] ?? "outline"}>
+                {r.key}
+              </Badge>
+            ))}
+          </div>
+        )
+      }
+    </DataState>
+  )
+}
+
+function MatrixCell({ on }: { on: boolean }) {
+  return on ? (
+    <span className="font-semibold text-primary">✓</span>
+  ) : (
+    <span className="text-muted-foreground">—</span>
+  )
+}
+
+function MatrixCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Матриця прав</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Право</TableHead>
+              <TableHead>teacher</TableHead>
+              <TableHead>admin</TableHead>
+              <TableHead>superadmin</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {PERMISSION_MATRIX.flatMap((group) => [
+              <TableRow key={`${group.group}-label`}>
+                <TableCell
+                  colSpan={4}
+                  className="font-mono text-[10px] text-muted-foreground"
+                >
+                  {group.group}
+                </TableCell>
+              </TableRow>,
+              ...group.perms.map((p) => (
+                <TableRow key={p.key}>
+                  <TableCell className="font-mono text-muted-foreground">
+                    {p.key}
+                  </TableCell>
+                  <TableCell>
+                    <MatrixCell on={p.t} />
+                  </TableCell>
+                  <TableCell>
+                    <MatrixCell on={p.a} />
+                  </TableCell>
+                  <TableCell>
+                    <MatrixCell on={p.s} />
+                  </TableCell>
+                </TableRow>
+              )),
+            ])}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   )

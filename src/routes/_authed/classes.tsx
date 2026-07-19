@@ -1,24 +1,23 @@
 import { useEffect, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
-import { Plus, X } from "lucide-react"
+import { Plus } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { DataState } from "@/components/data-state"
 import { ConfirmDialog } from "@/components/confirm-dialog"
-import { MemberCombobox } from "@/components/member-combobox"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -35,6 +34,9 @@ import {
   useClassTeachers,
   useAddTeacher,
   useRemoveTeacher,
+  useSetPrimaryTeacher,
+  useQuarters,
+  useAssignments,
 } from "@/lib/hooks"
 import { usePerms } from "@/lib/perms"
 import type { Class, CreateClassInput, Member } from "@/lib/types"
@@ -43,18 +45,61 @@ export const Route = createFileRoute("/_authed/classes")({
   component: ClassesPage,
 })
 
+function pluralTeachers(n: number) {
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return "ведучий"
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14))
+    return "ведучого"
+  return "ведучих"
+}
+
 function ClassesPage() {
   const { has } = usePerms()
   const canManage = has("class.manage")
   const classesQuery = useClasses()
   const membersQuery = useMembers(true)
+  const quartersQuery = useQuarters()
+  const quarters = quartersQuery.data ?? []
+  const quarter = quarters.find((q) => q.isActive) ?? quarters.at(0)
+  const assignmentsQuery = useAssignments(
+    quarter ? { from: quarter.startDate, to: quarter.endDate } : {}
+  )
+  const assignments = assignmentsQuery.data ?? []
+  const today = new Date().toISOString().slice(0, 10)
+
   const createClass = useCreateClass()
   const updateClass = useUpdateClass()
   const deleteClass = useDeleteClass()
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<Class | null>(null)
-  const [teachersFor, setTeachersFor] = useState<Class | null>(null)
+
+  function classHoles(classId: string) {
+    return assignments.filter(
+      (a) =>
+        a.classId === classId &&
+        !a.memberId &&
+        a.status !== "cancelled" &&
+        a.date >= today
+    ).length
+  }
+
+  function memberQuarterLoad(memberId: string) {
+    return assignments.filter(
+      (a) => a.memberId === memberId && a.status !== "cancelled"
+    ).length
+  }
+
+  function memberClassFuture(classId: string, memberId: string) {
+    return assignments.filter(
+      (a) =>
+        a.classId === classId &&
+        a.memberId === memberId &&
+        a.status !== "cancelled" &&
+        a.date >= today
+    ).length
+  }
 
   return (
     <>
@@ -74,70 +119,27 @@ function ClassesPage() {
         empty={<p className="text-sm text-muted-foreground">Немає даних</p>}
       >
         {(classes) => (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Назва</TableHead>
-                <TableHead>Опис</TableHead>
-                <TableHead>Порядок</TableHead>
-                <TableHead>Статус</TableHead>
-                <TableHead className="text-right">Дії</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {classes.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">{c.name}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {c.description ?? "—"}
-                  </TableCell>
-                  <TableCell>{c.sortOrder}</TableCell>
-                  <TableCell>
-                    <Badge variant={c.isActive ? "default" : "secondary"}>
-                      {c.isActive ? "Активний" : "Неактивний"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setTeachersFor(c)}
-                      >
-                        Вчителі
-                      </Button>
-                      {canManage && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditing(c)}
-                          >
-                            Редагувати
-                          </Button>
-                          <ConfirmDialog
-                            trigger={
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-destructive"
-                              >
-                                Видалити
-                              </Button>
-                            }
-                            title={`Видалити клас «${c.name}»?`}
-                            confirmLabel="Видалити"
-                            destructive
-                            onConfirm={() => deleteClass.mutate(c.id)}
-                          />
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))",
+              gap: "1rem",
+            }}
+          >
+            {classes.map((c) => (
+              <ClassCard
+                key={c.id}
+                classItem={c}
+                canManage={canManage}
+                members={membersQuery.data ?? []}
+                holes={classHoles(c.id)}
+                memberQuarterLoad={memberQuarterLoad}
+                memberClassFuture={memberClassFuture}
+                onEdit={() => setEditing(c)}
+                onDelete={() => deleteClass.mutate(c.id)}
+              />
+            ))}
+          </div>
         )}
       </DataState>
 
@@ -164,14 +166,276 @@ function ClassesPage() {
           )
         }
       />
-
-      <TeachersDialog
-        classItem={teachersFor}
-        onOpenChange={(open) => !open && setTeachersFor(null)}
-        members={membersQuery.data ?? []}
-        canManage={canManage}
-      />
     </>
+  )
+}
+
+function ClassCard({
+  classItem,
+  canManage,
+  members,
+  holes,
+  memberQuarterLoad,
+  memberClassFuture,
+  onEdit,
+  onDelete,
+}: {
+  classItem: Class
+  canManage: boolean
+  members: Member[]
+  holes: number
+  memberQuarterLoad: (memberId: string) => number
+  memberClassFuture: (classId: string, memberId: string) => number
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const teachersQuery = useClassTeachers(classItem.id)
+  const teachers = teachersQuery.data ?? []
+  const setPrimary = useSetPrimaryTeacher()
+  const removeTeacher = useRemoveTeacher()
+  const [poolAddOpen, setPoolAddOpen] = useState(false)
+
+  const poolIds = new Set(teachers.map((t) => t.memberId))
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">{classItem.name}</span>
+            {holes > 0 && <Badge variant="destructive">дірки: {holes}</Badge>}
+          </div>
+          {canManage && (
+            <div className="flex gap-1">
+              <Button variant="ghost" size="xs" onClick={onEdit}>
+                Редагувати
+              </Button>
+              <ConfirmDialog
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    className="text-destructive"
+                  >
+                    Видалити
+                  </Button>
+                }
+                title={`Видалити клас «${classItem.name}»?`}
+                confirmLabel="Видалити"
+                destructive
+                onConfirm={onDelete}
+              />
+            </div>
+          )}
+        </div>
+
+        {classItem.description && (
+          <p className="text-xs text-muted-foreground">
+            {classItem.description}
+          </p>
+        )}
+
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium">
+              Пул ведучих · {teachers.length}{" "}
+              {pluralTeachers(teachers.length)}
+            </span>
+            {canManage && (
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={() => setPoolAddOpen(true)}
+              >
+                Додати
+              </Button>
+            )}
+          </div>
+
+          <DataState
+            query={teachersQuery}
+            empty={
+              <p className="text-xs text-muted-foreground">Немає вчителів</p>
+            }
+          >
+            {(list) => (
+              <ul className="flex flex-col gap-1.5">
+                {list.map((t) => {
+                  const future = memberClassFuture(classItem.id, t.memberId)
+                  return (
+                    <li
+                      key={t.memberId}
+                      className="flex items-center justify-between gap-2 rounded-md border p-2"
+                    >
+                      <span className="flex flex-col">
+                        <span className="flex items-center gap-1.5 text-xs">
+                          {t.displayName ?? t.fullName}
+                          {t.isPrimary && <Badge>основний</Badge>}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {memberQuarterLoad(t.memberId)} субот у кварталі
+                        </span>
+                      </span>
+                      {canManage && (
+                        <div className="flex gap-1">
+                          {!t.isPrimary && (
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              onClick={() =>
+                                setPrimary.mutate({
+                                  classId: classItem.id,
+                                  memberId: t.memberId,
+                                  isPrimary: true,
+                                })
+                              }
+                            >
+                              Зробити основним
+                            </Button>
+                          )}
+                          <RemovePoolButton
+                            name={t.displayName ?? t.fullName}
+                            future={future}
+                            onConfirm={(release) =>
+                              removeTeacher.mutate({
+                                classId: classItem.id,
+                                memberId: t.memberId,
+                                releaseFutureSlots: release,
+                              })
+                            }
+                          />
+                        </div>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </DataState>
+        </div>
+      </CardContent>
+
+      <PoolAddDialog
+        classId={classItem.id}
+        poolMemberIds={poolIds}
+        members={members}
+        memberQuarterLoad={memberQuarterLoad}
+        open={poolAddOpen}
+        onOpenChange={setPoolAddOpen}
+      />
+    </Card>
+  )
+}
+
+function RemovePoolButton({
+  name,
+  future,
+  onConfirm,
+}: {
+  name: string
+  future: number
+  onConfirm: (releaseFutureSlots: boolean) => void
+}) {
+  const [release, setRelease] = useState(false)
+
+  return (
+    <ConfirmDialog
+      trigger={
+        <Button variant="ghost" size="xs">
+          Прибрати
+        </Button>
+      }
+      title={`Прибрати ${name} з класу?`}
+      description={
+        future > 0 ? (
+          <span className="flex flex-col gap-3">
+            <span>У цьому кварталі за ним ще {future} майбутніх субот…</span>
+            <span className="flex items-center justify-between gap-2">
+              <span>звільнити його майбутні слоти (стануть „вільно")</span>
+              <Switch checked={release} onCheckedChange={setRelease} />
+            </span>
+          </span>
+        ) : undefined
+      }
+      confirmLabel="Прибрати"
+      onConfirm={() => onConfirm(future > 0 ? release : false)}
+    />
+  )
+}
+
+function PoolAddDialog({
+  classId,
+  poolMemberIds,
+  members,
+  memberQuarterLoad,
+  open,
+  onOpenChange,
+}: {
+  classId: string
+  poolMemberIds: Set<string>
+  members: Member[]
+  memberQuarterLoad: (memberId: string) => number
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const addTeacher = useAddTeacher()
+  const [memberId, setMemberId] = useState<string | undefined>(undefined)
+  const [isPrimary, setIsPrimary] = useState(false)
+
+  useEffect(() => {
+    if (!open) {
+      setMemberId(undefined)
+      setIsPrimary(false)
+    }
+  }, [open])
+
+  const available = members.filter((m) => !poolMemberIds.has(m.id))
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Додати ведучого до пулу</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-3">
+          <Select value={memberId} onValueChange={setMemberId}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Оберіть вчителя" />
+            </SelectTrigger>
+            <SelectContent>
+              {available.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.displayName ?? m.fullName} ·{" "}
+                  {memberQuarterLoad(m.id)} субот у кварталі
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="pool-primary">основний ведучий класу</Label>
+            <Switch
+              id="pool-primary"
+              checked={isPrimary}
+              onCheckedChange={setIsPrimary}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            disabled={!memberId || addTeacher.isPending}
+            onClick={() =>
+              memberId &&
+              addTeacher.mutate(
+                { classId, memberId, isPrimary },
+                { onSuccess: () => onOpenChange(false) }
+              )
+            }
+          >
+            Додати
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -262,100 +526,6 @@ function ClassFormDialog({
             Зберегти
           </Button>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function TeachersDialog({
-  classItem,
-  onOpenChange,
-  members,
-  canManage,
-}: {
-  classItem: Class | null
-  onOpenChange: (open: boolean) => void
-  members: Member[]
-  canManage: boolean
-}) {
-  const teachersQuery = useClassTeachers(classItem?.id)
-  const addTeacher = useAddTeacher()
-  const removeTeacher = useRemoveTeacher()
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
-
-  useEffect(() => {
-    setSelectedMemberId(null)
-  }, [classItem?.id])
-
-  const poolIds = new Set((teachersQuery.data ?? []).map((t) => t.memberId))
-  const available = members.filter((m) => !poolIds.has(m.id))
-
-  return (
-    <Dialog open={!!classItem} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Вчителі класу «{classItem?.name}»</DialogTitle>
-        </DialogHeader>
-        {classItem && (
-          <DataState
-            query={teachersQuery}
-            empty={
-              <p className="text-sm text-muted-foreground">Немає вчителів</p>
-            }
-          >
-            {(teachers) => (
-              <ul className="flex flex-col gap-2">
-                {teachers.map((t) => (
-                  <li
-                    key={t.memberId}
-                    className="flex items-center justify-between gap-2 rounded-md border p-2"
-                  >
-                    <span className="flex items-center gap-2">
-                      {t.displayName ?? t.fullName}
-                      {t.isPrimary && <Badge>Основний</Badge>}
-                    </span>
-                    {canManage && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="Прибрати з класу"
-                        onClick={() =>
-                          removeTeacher.mutate({
-                            classId: classItem.id,
-                            memberId: t.memberId,
-                          })
-                        }
-                      >
-                        <X />
-                      </Button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </DataState>
-        )}
-        {canManage && classItem && (
-          <div className="flex gap-2">
-            <MemberCombobox
-              members={available}
-              value={selectedMemberId}
-              onChange={setSelectedMemberId}
-            />
-            <Button
-              disabled={!selectedMemberId}
-              onClick={() =>
-                selectedMemberId &&
-                addTeacher.mutate(
-                  { classId: classItem.id, memberId: selectedMemberId },
-                  { onSuccess: () => setSelectedMemberId(null) }
-                )
-              }
-            >
-              Додати
-            </Button>
-          </div>
-        )}
       </DialogContent>
     </Dialog>
   )
