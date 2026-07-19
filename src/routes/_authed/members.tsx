@@ -313,6 +313,18 @@ function MembersPage() {
               {editing ? "Редагувати вчителя" : "Додати вчителя"}
             </DialogTitle>
           </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (
+                !form.fullName.trim() ||
+                createMember.isPending ||
+                updateMember.isPending
+              )
+                return
+              submitForm()
+            }}
+          >
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="fullName">ПІБ*</Label>
@@ -320,6 +332,7 @@ function MembersPage() {
                 id="fullName"
                 value={form.fullName}
                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                required
               />
             </div>
             {editing && (
@@ -375,11 +388,11 @@ function MembersPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setFormOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
               Скасувати
             </Button>
             <Button
-              onClick={submitForm}
+              type="submit"
               disabled={
                 !form.fullName ||
                 createMember.isPending ||
@@ -389,6 +402,7 @@ function MembersPage() {
               Зберегти
             </Button>
           </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
