@@ -322,37 +322,43 @@ function MembersPage() {
                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="displayName">Імʼя</Label>
-                <Input
-                  id="displayName"
-                  value={form.displayName}
-                  onChange={(e) =>
-                    setForm({ ...form, displayName: e.target.value })
-                  }
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="phone">Телефон</Label>
-                <Input
-                  id="phone"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="telegramUsername">Telegram username</Label>
-              <Input
-                id="telegramUsername"
-                value={form.telegramUsername}
-                onChange={(e) =>
-                  setForm({ ...form, telegramUsername: e.target.value })
-                }
-              />
-              <p className="text-xs text-muted-foreground">без @</p>
-            </div>
+            {editing && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="displayName">Імʼя</Label>
+                    <Input
+                      id="displayName"
+                      value={form.displayName}
+                      onChange={(e) =>
+                        setForm({ ...form, displayName: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="phone">Телефон</Label>
+                    <Input
+                      id="phone"
+                      value={form.phone}
+                      onChange={(e) =>
+                        setForm({ ...form, phone: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="telegramUsername">Telegram username</Label>
+                  <Input
+                    id="telegramUsername"
+                    value={form.telegramUsername}
+                    onChange={(e) =>
+                      setForm({ ...form, telegramUsername: e.target.value })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">без @</p>
+                </div>
+              </>
+            )}
             {editing && (
               <div className="flex items-center justify-between">
                 <Label htmlFor="isActive">
