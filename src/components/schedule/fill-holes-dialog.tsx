@@ -19,6 +19,7 @@ import { toastUndo } from "@/components/undo-toast"
 import {
   useFillSuggestions,
   useBulkAssign,
+  useMembers,
   useUndo,
   useSettings,
 } from "@/lib/hooks"
@@ -39,6 +40,7 @@ export function FillHolesDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const sug = useFillSuggestions(quarterId, open)
+  const membersQuery = useMembers(true)
   const bulkAssign = useBulkAssign()
   const undo = useUndo()
   const settingsQuery = useSettings()
@@ -62,6 +64,7 @@ export function FillHolesDialog({
   }, [sug.data])
 
   const holes = sug.data?.holes ?? []
+  const allMembers = membersQuery.data ?? []
   const chosen = Object.entries(choices).filter(([, v]) => v !== FREE)
   const n = chosen.length
 
@@ -101,31 +104,40 @@ export function FillHolesDialog({
           <p className="text-muted-foreground">Дірок немає</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {holes.map((h) => (
-              <div key={h.assignmentId} className="flex items-center gap-2">
-                <span className="w-28 shrink-0">
-                  {formatDate(h.date)} · {h.className}
-                </span>
-                <Select
-                  value={choices[h.assignmentId] ?? FREE}
-                  onValueChange={(v) =>
-                    setChoices((c) => ({ ...c, [h.assignmentId]: v }))
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={FREE}>— лишити вільним</SelectItem>
-                    {h.options.map((o) => (
-                      <SelectItem key={o.memberId} value={o.memberId}>
-                        {o.name} · {o.quarterLoad} субот
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
+            {holes.map((h) => {
+              const poolIds = new Set(h.options.map((o) => o.memberId))
+              const rest = allMembers.filter((m) => !poolIds.has(m.id))
+              return (
+                <div key={h.assignmentId} className="flex items-center gap-2">
+                  <span className="w-28 shrink-0">
+                    {formatDate(h.date)} · {h.className}
+                  </span>
+                  <Select
+                    value={choices[h.assignmentId] ?? FREE}
+                    onValueChange={(v) =>
+                      setChoices((c) => ({ ...c, [h.assignmentId]: v }))
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={FREE}>— лишити вільним</SelectItem>
+                      {h.options.map((o) => (
+                        <SelectItem key={o.memberId} value={o.memberId}>
+                          {o.name} · {o.quarterLoad} субот
+                        </SelectItem>
+                      ))}
+                      {rest.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.fullName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )
+            })}
           </div>
         )}
         <DialogFooter>

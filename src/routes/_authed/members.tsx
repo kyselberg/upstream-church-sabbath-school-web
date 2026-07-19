@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Table,
   TableHeader,
@@ -81,6 +82,9 @@ function MembersPage() {
   const membersQuery = useMembers(false, pollToken ? 3000 : undefined)
   const members = membersQuery.data ?? []
   const activeMembers = members.filter((m) => m.isActive)
+  const unlinkedCount = members.filter((m) => !m.telegramLinkedAt).length
+
+  const [unlinkedOnly, setUnlinkedOnly] = useState(false)
 
   const quartersQuery = useQuarters()
   const quarters = quartersQuery.data ?? []
@@ -163,11 +167,25 @@ function MembersPage() {
       <PageHeader
         title="Вчителі"
         action={
-          canManage ? (
-            <Button onClick={openCreate}>
-              <Plus /> Додати вчителя
-            </Button>
-          ) : undefined
+          <div className="flex items-center gap-2">
+            <Tabs
+              value={unlinkedOnly ? "unlinked" : "all"}
+              onValueChange={(v) => setUnlinkedOnly(v === "unlinked")}
+            >
+              <TabsList>
+                <TabsTrigger value="all">Усі</TabsTrigger>
+                <TabsTrigger value="unlinked">
+                  Тільки не привʼязані
+                  {unlinkedCount > 0 ? ` (${unlinkedCount})` : ""}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            {canManage && (
+              <Button onClick={openCreate}>
+                <Plus /> Додати вчителя
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -175,7 +193,11 @@ function MembersPage() {
         query={membersQuery}
         empty={<p className="text-sm text-muted-foreground">Немає даних</p>}
       >
-        {(list) => (
+        {(list) => {
+          const filteredList = unlinkedOnly
+            ? list.filter((m) => !m.telegramLinkedAt)
+            : list
+          return (
           <>
             <Table>
               <TableHeader>
@@ -191,7 +213,7 @@ function MembersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {list.map((member) => (
+                {filteredList.map((member) => (
                   <TableRow
                     key={member.id}
                     className={!member.isActive ? "opacity-55" : undefined}
@@ -202,14 +224,14 @@ function MembersPage() {
                     <TableCell>{member.displayName ?? "—"}</TableCell>
                     <TableCell>{member.phone ?? "—"}</TableCell>
                     <TableCell>
-                      {member.telegramUserId != null ? (
+                      {member.telegramLinkedAt ? (
                         <Badge variant="secondary">
                           {member.telegramUsername
                             ? `@${member.telegramUsername}`
-                            : "привязано"}
+                            : "привʼязано"}
                         </Badge>
                       ) : (
-                        <Badge variant="outline">не привязано</Badge>
+                        <Badge variant="outline">не привʼязано</Badge>
                       )}
                     </TableCell>
                     <TableCell>
@@ -303,7 +325,8 @@ function MembersPage() {
               />
             </div>
           </>
-        )}
+          )
+        }}
       </DataState>
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
