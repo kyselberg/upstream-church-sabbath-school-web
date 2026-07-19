@@ -15,6 +15,7 @@ import { Route as AuthedIndexRouteImport } from './routes/_authed/index'
 import { Route as AuthedSettingsRouteImport } from './routes/_authed/settings'
 import { Route as AuthedScheduleRouteImport } from './routes/_authed/schedule'
 import { Route as AuthedRolesRouteImport } from './routes/_authed/roles'
+import { Route as AuthedMyRouteImport } from './routes/_authed/my'
 import { Route as AuthedMembersRouteImport } from './routes/_authed/members'
 import { Route as AuthedClassesRouteImport } from './routes/_authed/classes'
 import { Route as AuthedActivityRouteImport } from './routes/_authed/activity'
@@ -48,6 +49,11 @@ const AuthedRolesRoute = AuthedRolesRouteImport.update({
   path: '/roles',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedMyRoute = AuthedMyRouteImport.update({
+  id: '/my',
+  path: '/my',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedMembersRoute = AuthedMembersRouteImport.update({
   id: '/members',
   path: '/members',
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/activity': typeof AuthedActivityRoute
   '/classes': typeof AuthedClassesRoute
   '/members': typeof AuthedMembersRoute
+  '/my': typeof AuthedMyRoute
   '/roles': typeof AuthedRolesRoute
   '/schedule': typeof AuthedScheduleRoute
   '/settings': typeof AuthedSettingsRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByTo {
   '/activity': typeof AuthedActivityRoute
   '/classes': typeof AuthedClassesRoute
   '/members': typeof AuthedMembersRoute
+  '/my': typeof AuthedMyRoute
   '/roles': typeof AuthedRolesRoute
   '/schedule': typeof AuthedScheduleRoute
   '/settings': typeof AuthedSettingsRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   '/_authed/activity': typeof AuthedActivityRoute
   '/_authed/classes': typeof AuthedClassesRoute
   '/_authed/members': typeof AuthedMembersRoute
+  '/_authed/my': typeof AuthedMyRoute
   '/_authed/roles': typeof AuthedRolesRoute
   '/_authed/schedule': typeof AuthedScheduleRoute
   '/_authed/settings': typeof AuthedSettingsRoute
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/classes'
     | '/members'
+    | '/my'
     | '/roles'
     | '/schedule'
     | '/settings'
@@ -113,6 +123,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/classes'
     | '/members'
+    | '/my'
     | '/roles'
     | '/schedule'
     | '/settings'
@@ -124,6 +135,7 @@ export interface FileRouteTypes {
     | '/_authed/activity'
     | '/_authed/classes'
     | '/_authed/members'
+    | '/_authed/my'
     | '/_authed/roles'
     | '/_authed/schedule'
     | '/_authed/settings'
@@ -179,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedRolesRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/my': {
+      id: '/_authed/my'
+      path: '/my'
+      fullPath: '/my'
+      preLoaderRoute: typeof AuthedMyRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/members': {
       id: '/_authed/members'
       path: '/members'
@@ -207,6 +226,7 @@ interface AuthedRouteChildren {
   AuthedActivityRoute: typeof AuthedActivityRoute
   AuthedClassesRoute: typeof AuthedClassesRoute
   AuthedMembersRoute: typeof AuthedMembersRoute
+  AuthedMyRoute: typeof AuthedMyRoute
   AuthedRolesRoute: typeof AuthedRolesRoute
   AuthedScheduleRoute: typeof AuthedScheduleRoute
   AuthedSettingsRoute: typeof AuthedSettingsRoute
@@ -217,6 +237,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedActivityRoute: AuthedActivityRoute,
   AuthedClassesRoute: AuthedClassesRoute,
   AuthedMembersRoute: AuthedMembersRoute,
+  AuthedMyRoute: AuthedMyRoute,
   AuthedRolesRoute: AuthedRolesRoute,
   AuthedScheduleRoute: AuthedScheduleRoute,
   AuthedSettingsRoute: AuthedSettingsRoute,
